@@ -15,7 +15,7 @@ ui <- shinyUI(fluidPage(
                           textInput("text1", "股票代码", value = "603198"), 
                           fluidRow(verbatimTextOutput("value")),
                           dateRangeInput("dates", label = "观察时间",start ="2018-01-01"),
-                          selectInput("ttr", label = "TTR",  width = "100%",choices = c("SMA", "EMA", "VWAP")),
+                          selectInput("ttr", label = "TTR",  width = "100%",choices = c("SMA", "EMA", "VWMA","MACD")),
                           br(),
                           sliderInput("ina", h5("短期均线参数值"), min = 1, max = 9, value = 5,step=1),
                           sliderInput("inb", h5("长期均线参数值"), min = 10, max = 20, value = 10,step=1),
@@ -72,12 +72,19 @@ server <- shinyServer(function(input, output) {
         mutate(nsig = sma - lma) %>% mutate(bs = nsig>0)
       
     }
-    else{
+    else if( input$ttr =="VWMA" ){
       SSE <- tSSE %>%
         tq_mutate_xy(x = close, y = volume, mutate_fun = VWMA, n = sma,col_rename = "sma") %>%
         tq_mutate_xy(x = close, y = volume, mutate_fun = VWMA, n = lma,col_rename = "lma") %>%
         mutate(nsig = sma - lma) %>% mutate(bs = nsig>0)
       
+    }
+    else{
+      SSE <- tSSE %>%
+        tq_mutate(select = close, mutate_fun = MACD) %>%
+        mutate(nsig = macd - signal) %>% mutate(bs = nsig>0)
+        SSE$macd = EMA(Cl(SSE), n = 12)
+        SSE$signal = EMA(Cl(SSE), n = 26) 
     }
     
     SSE$close = round(SSE$close,2)
